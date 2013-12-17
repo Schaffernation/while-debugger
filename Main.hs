@@ -39,37 +39,48 @@ getHist (_, _, _, hist, _) = hist
 getLines :: Environment -> IORef LineMap
 getLines (_, _, _, _, lineMap) = lineMap
 
+printIfLoaded :: Environment -> String -> IO ()
+printIfLoaded env str = do
+  lnMap <- readIORef (getLines env)
+  putStrLn $ if null (Map.keys lnMap) 
+    then "No Program Loaded"
+    else str
+
+printLn :: Environment -> Line -> IO ()
+printLn env ln = do
+  lnMap <- readIORef (getLines env)
+  printIfLoaded env $ case Map.lookup ln lnMap of
+    Nothing   -> "Line does not exist"
+    Just line -> show ln ++ ":\t" ++ line
+
+
 printStmt :: Environment -> Maybe Statement -> IO ()
 printStmt env mSt = do
   case mSt of 
     Nothing -> putStrLn "End of Program"
     Just st -> do
-      lnMap <- readIORef (getLines env)
       let ln = getLn st
-      case (Map.lookup ln lnMap) of
-        Nothing   -> putStrLn $ (show ln) ++ " Hmm?"
-        Just line -> putStrLn $ (show ln) ++ ": " ++ line
+      printLn env ln
 
 printProg :: Environment -> Maybe Statement -> IO ()
 printProg env mSt = do
   lnMap <- readIORef (getLines env)
-  putStr $ Map.foldrWithKey mkStrLn "" lnMap where
-    ln = case mSt of 
-      Nothing -> 0
-      Just st -> getLn st
-    mkStrLn ln' s s' = (if ln == ln' then "-> " else "   ") ++
-      show ln' ++ ":\t" ++ s ++ "\n" ++ s'
-
+  printIfLoaded env (init $ Map.foldrWithKey mkStrLn "" lnMap) where
+    margin = case mSt of 
+      Nothing -> const "   "
+      Just st -> \ln -> if getLn st == ln then "-> " else "   "
+    mkStrLn ln s s' =  margin ln ++ show ln ++ ":\t" ++ s ++ "\n" ++ s'
 
 execCmd :: Environment -> Cmd -> IO ()
 execCmd env (Load file) = do
   (ioAst, lnMap) <- tokParseFromFile file
   case ioAst of
-    Left _ -> putStrLn "not a valid file"
+    Left e -> putStrLn e
     Right ast -> do
       writeIORef (getNext env) (Just ast)
       writeIORef (getStore env) emptyStore
       writeIORef (getLines env) lnMap
+      writeIORef (getBps env) []
       printProg env (Just ast)
 execCmd env Step = do
   mNext <- readIORef (getNext  env)
@@ -99,6 +110,7 @@ execCmd env Vars = do
 execCmd env Run = do
   bps   <- readIORef (getBps env)
   st    <- readIORef (getStore env)
+  hist  <- readIORef (getHist  env)
   mNext <- readIORef (getNext env)
   case mNext of
     Nothing -> putStrLn "Program Finished"
@@ -106,10 +118,14 @@ execCmd env Run = do
       let (st', err, printLog, next') = run bps st next
       writeIORef (getNext env)  next'
       writeIORef (getStore env) st'
-      -- TODO: History for running
-      --writeIORef (getHist env)  ((next, st) : hist)
+      writeIORef (getHist env)  ((next, st) : hist)
       putStr printLog
       printProg env next'
+execCmd env (PrintLn mLn) = do
+  mNext <- readIORef (getNext env)
+  case mLn of 
+    Nothing -> printProg env mNext
+    Just ln -> printLn env ln
 execCmd env (MkBreak bp) = do
   bps <- readIORef (getBps env)
   writeIORef (getBps env) (insert bp bps)
@@ -118,7 +134,18 @@ execCmd env (RmBreak bp) = do
   writeIORef (getBps env) (delete bp bps)
 execCmd env LsBreak = do
   bps <- readIORef (getBps env)
-  putStrLn $ show bps
+  putStrLn $ if null bps then "No Breakpoints" else "Breakpoints: " ++ show bps
+execCmd _   (Error str) = putStrLn str
+execCmd env (Man mCmd)  = do
+  let
+    printCmd        = putStrLn . formatList
+    justCmd cmd     = filter (\(cmd',_,_) -> isInfixOf cmd cmd')
+    formatList []   = "No Such Command"
+    formatList strs = foldr1 (\t ts -> t ++ '\n' : ts) (map format strs)
+    format (_, usage, description) = usage ++ "\t : " ++ description
+  case mCmd of
+    Nothing  -> printCmd cmdstrs
+    Just cmd -> printCmd $ justCmd cmd cmdstrs where 
 --execCmd env _ = undefined
 
 parseLine :: Environment -> String -> IO ()

@@ -2,6 +2,7 @@ module WhileParser where
 
 import Control.Monad
 import System.IO
+import System.IO.Error
 
 import Data.Map (Map)
 import qualified Data.Map as Map
@@ -151,7 +152,10 @@ mkMap s = m where
 
 tokParseFromFile :: String -> IO (Either ParseError Statement, Map Int String)
 tokParseFromFile filename = do 
-  handle <- openFile filename ReadMode 
-  str <- hGetContents handle
-  return (tokParse str, mkMap str)
+  eHandle <- tryIOError (openFile filename ReadMode)
+  case eHandle of
+    Left _ -> return (Left "File Not Found", Map.empty)
+    Right handle -> do
+      str <- hGetContents handle
+      return (tokParse str, mkMap str)
 
