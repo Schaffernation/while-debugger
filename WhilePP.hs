@@ -46,8 +46,6 @@ data Statement =
   | Sequence Statement Statement        
   | Skip Line
   | Print String Expression Line
-  | Throw Expression Line
-  | Try Statement Variable Statement Line
   deriving (Show, Eq)
 
 
@@ -109,14 +107,6 @@ instance PP Statement where
   pp (Sequence s1 s2) = pp s1 <> PP.semi $$ pp s2
   pp (Skip _) = PP.text "skip"
   pp (Print s e _) = PP.text "print" <+> PP.doubleQuotes (PP.text s) <+> pp e
-  pp (Throw e _) = PP.text "throw" <+> pp e 
-  pp (Try s1 v s2 _) = PP.vcat [ PP.text "try", 
-                               PP.nest 2 (pp s1), 
-                               PP.text "catch" <+> PP.text v <+> PP.text "with",
-                               PP.nest 2 (pp s2),
-                               PP.text "endwith" ]
-
-
 
 display :: PP a => a -> String
 display = show . pp

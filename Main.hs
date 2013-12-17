@@ -46,18 +46,23 @@ printIfLoaded env str = do
     then "No Program Loaded"
     else str
 
+
 printLn :: Environment -> Line -> IO ()
 printLn env ln = do
   lnMap <- readIORef (getLines env)
+  mNext <- readIORef (getNext env)
   printIfLoaded env $ case Map.lookup ln lnMap of
     Nothing   -> "Line does not exist"
-    Just line -> show ln ++ ":\t" ++ line
+    Just line -> margin ++ show ln ++ ":\t" ++ line where
+      margin = case mNext of
+        Nothing -> "   "
+        Just next -> if getLn next == ln then "-> " else "   "
 
 
 printStmt :: Environment -> Maybe Statement -> IO ()
 printStmt env mSt = do
   case mSt of 
-    Nothing -> putStrLn "End of Program"
+    Nothing -> return ()
     Just st -> do
       let ln = getLn st
       printLn env ln
@@ -87,14 +92,16 @@ execCmd env Step = do
   st    <- readIORef (getStore env)
   hist  <- readIORef (getHist  env)
   case mNext of
-    Nothing -> putStrLn "No step"
+    Nothing -> putStrLn "End of Program"
     Just next -> do
       let (st', err, printLog, next') = step st next
       writeIORef (getNext env)  next'
       writeIORef (getStore env) st'
       writeIORef (getHist env)  ((next, st) : hist)
-      printProg env next'
       putStr printLog
+      case err of
+        Nothing  -> printStmt env next'
+        Just msg -> putStrLn $ "Error: " ++ msg
 execCmd env Back = do
   hist <- readIORef (getHist env)
   case hist of
@@ -103,7 +110,7 @@ execCmd env Back = do
       writeIORef (getNext env)  (Just next)
       writeIORef (getStore env) st
       writeIORef (getHist env)  hist'
-      printProg env (Just next)
+      printStmt env (Just next)
 execCmd env Vars = do
   st <- readIORef (getStore env)
   putStr $ display st
@@ -113,14 +120,16 @@ execCmd env Run = do
   hist  <- readIORef (getHist  env)
   mNext <- readIORef (getNext env)
   case mNext of
-    Nothing -> putStrLn "Program Finished"
+    Nothing -> putStrLn "End of Program"
     Just next -> do
       let (st', err, printLog, next') = run bps st next
       writeIORef (getNext env)  next'
       writeIORef (getStore env) st'
       writeIORef (getHist env)  ((next, st) : hist)
       putStr printLog
-      printProg env next'
+      case err of
+        Nothing  -> printStmt env next'
+        Just msg -> putStrLn $ "Error: " ++ msg
 execCmd env (PrintLn mLn) = do
   mNext <- readIORef (getNext env)
   case mLn of 

@@ -146,9 +146,8 @@ tokParse str = case doParse tokStatementP (doLexer str) of
 
 mkMap :: String -> Map Int String
 mkMap s = m where
-  (_, _, m) = foldl split (1, [], Map.empty) s
-  split (ln, line, m) '\n' = (ln + 1, "", Map.insert ln line m)
-  split (ln, line, m) c    = (ln, line ++ [c], m)
+  (_, m) = foldl split (1, Map.empty) (lines s)
+  split (ln, m) line = (ln + 1, Map.insert ln line m)
 
 tokParseFromFile :: String -> IO (Either ParseError Statement, Map Int String)
 tokParseFromFile filename = do 
