@@ -1,0 +1,7 @@
+* Line Number parsing
+* Line nums interaction
+* Breakpoints
+* state inspection
+* Try/Throw
+* ¿¿ More Language extentions ??
+* Handle Errors
