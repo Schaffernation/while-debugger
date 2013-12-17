@@ -14,18 +14,23 @@ which can be found in the the *progs* folder. One recommendation is run the
 executable inside rlwrap like this: `rlwrap ./Main`. This adds readline support.
 
 The project is spread across multiple components and files:
+
 **Main.hs** 
+
   The main user interaction loop. This is where all running, stepping forward,
   stepping backward, breakpointing store state.
 
 **WhilePP.hs**
 **WhileSyntax.hs**
+
   These files are the AST type definitions for the meta representation of the 
   WHILE language. They also hold all the same necessary information for pretty 
   printing the while language. 
 
+
 **ParserCombinators.hs**
 **ParserTrans.hs**
+
   These files are the backbone of the parsers and tokenizers used to take in
   input. (Whether it be debugger command input of code input, these files 
   support it). Much of this is similar to what was worked on in class with,
@@ -34,13 +39,16 @@ The project is spread across multiple components and files:
   crucial in creating a refrence point for debugger users.
 
 **CommandParser.hs**
+
   Parses commands users type into the debugger.
 
 **WhileParser.hs**
+
   Parses the language itself from files, into tokens, and then into an AST which
   can be executed.
 
 **WhileStep.hs**
+
   All the execution logic lives in this file. It creates a small-step semantics
   so that a given program can step line by line through a program. This is the
   logic that Main.hs uses to execute.
