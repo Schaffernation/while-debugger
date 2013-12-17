@@ -46,7 +46,20 @@ data Statement =
   | Sequence Statement Statement        
   | Skip Line
   | Print String Expression Line
-  deriving (Show, Eq)
+  deriving (Show)
+
+instance Eq Statement where
+  Assign v e _ == Assign v' e' _  = (v, e) == (v',e')
+  If e s1 s2 _ == If e' s1' s2' _ = (e, s1, s2) == (e', s1', s2')
+  While e s _  == While e' s' _   = (e, s) == (e', s')
+  Skip _       == Skip _          = True
+  Print st e _ == Print st' e' _  = (st, e) == (st', e')
+  Sequence (Sequence s1 s2) s3 == Sequence s1' (Sequence s2' s3') =
+    (s1, s2, s3) == (s1', s2', s3')
+  Sequence s1 (Sequence s2 s3) == Sequence (Sequence s1' s2') s3' =
+    (s1, s2, s3) == (s1', s2', s3')
+  Sequence s1 s2 == Sequence s1' s2' = (s1, s2) == (s1', s2')
+  _            == _               = False
 
 
 ----------------------------
@@ -87,6 +100,7 @@ level :: Bop -> Int
 level Plus   = 3
 level Minus  = 3 
 level Times  = 5
+level Divide = 5
 level _      = 8
 
 

@@ -42,10 +42,10 @@ opP = constP "+"  Plus <|>
       constP "-"  Minus <|>
       constP "*"  Times <|>
       constP "/"  Divide <|>
-      constP ">"  Gt <|>
       constP ">=" Ge <|>
-      constP "<"  Lt <|>
-      constP "<=" Le
+      constP ">"  Gt <|>
+      constP "<=" Le <|>
+      constP "<"  Lt
       
 
 varP :: GenParser Char Variable
@@ -81,18 +81,39 @@ tokParenP p = do
   return p'
 
 tokExprP :: GenParser Token Expression
-tokExprP = op <|> valVar <|> tokParenP tokExprP where
-  op = do
-    e1           <- tokParenP tokExprP <|> valVar
-    (TokBop b ln) <- getC
-    e2           <- tokExprP <|> tokParenP tokExprP
-    return $ Op b e1 e2
-  valVar = do
-        v <- getC
-        case v of
-          TokVal v' _ -> return $ Val v'
-          TokVar v' _ -> return $ Var v'
-          _           -> fail "not val or var"
+tokExprP = sumP where
+  sumP    = prodP   `chainl1` opLevel (level Plus)
+  prodP   = compP   `chainl1` opLevel (level Times)
+  compP   = factorP `chainl1` opLevel (level Gt)
+  factorP = tokParenP tokExprP <|> baseP
+  baseP   = do
+    v <- getC
+    case v of
+      TokVal v' _ -> return $ Val v'
+      TokVar v' _ -> return $ Var v'
+      _           -> fail "not val or var"
+
+-- only succeeds for operators at a particular precedence level
+opLevel :: Int -> GenParser Token (Expression -> Expression -> Expression)
+opLevel l = do
+  x <- getC
+  case x of
+    TokBop bop _ -> if level bop == l then (return $ Op bop) else fail ""
+    _ -> fail ""
+
+  --op <|> valVar <|> tokParenP tokExprP where
+  --op = do
+  --  e1           <- tokParenP tokExprP <|> valVar
+  --  (TokBop b ln) <- getC
+  --  e2           <- tokExprP <|> tokParenP tokExprP
+  --  return $ Op b e1 e2
+  --valVar = do
+  --      v <- getC
+  --      case v of
+  --        TokVal v' _ -> return $ Val v'
+  --        TokVar v' _ -> return $ Var v'
+  --        _           -> fail "not val or var"
+
 
 tokStatementP :: GenParser Token Statement
 tokStatementP = isSeq <|> notSeq where

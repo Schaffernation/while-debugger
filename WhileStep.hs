@@ -172,72 +172,8 @@ s `raises` str = case (run [] emptyStore s) of
     (_, Just str', _, _) -> str ~?= str'
     _  -> undefined
 
---t1 :: Test
---t1 = (Assign "X"  (Var "Y")) `raises` IntVal 0
-
---t2 :: Test
---t2 = (Assign "X" (Op Divide (Val (IntVal 1)) (Val (IntVal 0)))) `raises` IntVal 1
-
---t3 :: Test       
---t3 = TestList [ Assign "X" (Op Plus (Val (IntVal 1)) (Val (BoolVal True))) `raises` IntVal 2,      
---                If (Val (IntVal 1)) Skip Skip `raises` IntVal 2,
---                While (Val (IntVal 1)) Skip `raises` IntVal 2]
-
 mksequence :: [Statement] -> Statement
 mksequence = foldr1 Sequence
-
---testprog1 :: Statement
---testprog1 = mksequence [Assign "X" $ Val $ IntVal 0,
---                        Assign "Y" $ Val $ IntVal 1,
---                        Print "hello world: " $ Var "X",
---                        If (Op Lt (Var "X") (Var "Y")) (Throw (Op Plus (Var "X") (Var "Y")))
---                                                       Skip,
---                        Assign "Z" $ Val $ IntVal 3]
-
-----t4 :: Test
-----t4 = run emptyStore testprog1 ~?=
-----  ((Map.fromList [("X", IntVal 0), ("Y",  IntVal 1)]), Just (IntVal 1), "hello world: 0", Nothing)
-
---testprog2 :: Statement
---testprog2 = mksequence [Assign "X" $ Val $ IntVal 0,
---                        Assign "Y" $ Val $ IntVal 1,
---                        Try (If (Op Lt (Var "X") (Var "Y"))
---                                (mksequence [Assign "A" $ Val $ IntVal 100,
---                                             Throw (Op Plus (Var "X") (Var "Y")),
---                                             Assign "B" $ Val $ IntVal 200])
---                                Skip)
---                            "E"
---                            (Assign "Z" $ Op Plus (Var "E") (Var "A"))]
-
---testprog3 :: Statement
---testprog3 = mksequence [Assign "X" $ Val $ IntVal 0,
---                        Assign "Y" $ Val $ IntVal 1,
---                        Print "hello world: " $ Var "X",
---                        If (Op Lt (Var "X") (Var "Y")) (Assign "X" (Val (IntVal 3)))
---                                                       Skip,
---                        Assign "Z" $ Val $ IntVal 3]
-
---t7 :: Test
---t7 = run emptyStore testprog3 ~?=
---  (Map.fromList [("X", IntVal 3), ("Y",  IntVal 1), ("Z",IntVal 3)], Nothing, "hello world: 0", Nothing)
-
---testif :: Statement
---testif = If (Val (BoolVal True)) (Assign "X" (Val (IntVal 1))) (Assign "X" (Val (IntVal 0)))
-
---t6 :: Test
---t6 = step emptyStore testif ~?= 
---  (Map.empty, Nothing, "", Just $ Assign "X" (Val (IntVal 1)))
-
-
---t5 :: Test
---t5 = run emptyStore testprog2 ~?=
---   (Map.fromList [("A", IntVal 100), ("E", IntVal 1), ("X", IntVal 0), ("Y", IntVal 1), ("Z", IntVal 101)],
---    Nothing, "", Nothing)
-
---tests :: IO ()
---tests = do 
---   _ <- runTestTT $ TestList [ t1, t2, t3, t4, t5, t6, t7 ]
---   return ()
 
 instance PP Store where
   pp = Map.foldrWithKey ppRow (PP.text "") where
