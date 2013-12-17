@@ -3,16 +3,19 @@ module WhileParser where
 import Control.Monad
 import System.IO
 
+import Data.Map (Map)
+import qualified Data.Map as Map
+
 import ParserCombinators
 import ParserTrans
 import WhilePP
 
 data Token = 
-     TokVar String       -- variables
-   | TokVal Value        -- primitive values
-   | TokBop Bop          -- binary operators
-   | Keyword String      -- keywords
-   | Literal String      -- String literals
+     TokVar String  Int  -- variables
+   | TokVal Value   Int  -- primitive values
+   | TokBop Bop     Int  -- binary operators
+   | Keyword String Int  -- keywords
+   | Literal String Int  -- String literals
 
       deriving (Eq, Show)
 valueP :: GenParser Char Value
@@ -22,6 +25,12 @@ intP :: GenParser Char Value
 intP = do
   i <- int
   return $ IntVal i
+
+newLineP :: GenParser Char Char 
+newLineP = do
+  c <- char '\n'
+  incrLn
+  return c
 
 boolP :: GenParser Char Value
 boolP = constP "true"  (BoolVal True) <|>
@@ -47,77 +56,80 @@ litP = between (char '"') (many $ satisfy ('"' /=)) (char '"')
 type Lexer = GenParser Char [Token]
 
 whileKeywords :: [ GenParser Char Token ]
-whileKeywords = map (\x -> constP x (Keyword x)) 
-             [ "(", ")", ":=", ";", "if", "then", "else",
-             "endif", "while", "do", "endwhile", "skip", "print" ]
+whileKeywords = map insert keys where
+  insert x = do
+    ln <- getLn
+    constP x (Keyword x ln) 
+  keys     = [ "(", ")", ":=", ";", "if", "then", "else",
+              "endif", "while", "do", "endwhile", "skip", "print" ]
 
 whileLexer :: Lexer 
 whileLexer = sepBy1
-        (liftM TokVal valueP <|>
-         liftM TokVar varP   <|>
-         liftM TokBop opP    <|>
+        (liftM2 TokVal valueP getLn <|>
+         liftM2 TokVar varP getLn  <|>
+         liftM2 TokBop opP getLn  <|>
          choice whileKeywords <|>
-         liftM Literal litP)
-        (many space)
+         liftM2 Literal litP getLn)
+        (many (newLineP <|> space))
 
 tokParenP :: GenParser Token a -> GenParser Token a
 tokParenP p = do
-  (Keyword "(") <- getC
-  p'            <- p
-  (Keyword ")") <- getC
+  (Keyword "(" _) <- getC
+  p'              <- p
+  (Keyword ")" _) <- getC
   return p'
 
 tokExprP :: GenParser Token Expression
 tokExprP = op <|> valVar <|> tokParenP tokExprP where
   op = do
-    e1         <- tokParenP tokExprP <|> valVar
-    (TokBop b) <- getC
-    e2         <- tokExprP <|> tokParenP tokExprP
+    e1           <- tokParenP tokExprP <|> valVar
+    (TokBop b ln) <- getC
+    e2           <- tokExprP <|> tokParenP tokExprP
     return $ Op b e1 e2
   valVar = do
         v <- getC
         case v of
-          TokVal v' -> return $ Val v'
-          TokVar v' -> return $ Var v'
-          _         -> fail "not val or var"
+          TokVal v' _ -> return $ Val v'
+          TokVar v' _ -> return $ Var v'
+          _           -> fail "not val or var"
 
 tokStatementP :: GenParser Token Statement
 tokStatementP = isSeq <|> notSeq where
   isSeq = do
-    s1            <- notSeq
-    (Keyword ";") <- getC
-    s2            <- tokStatementP
+    s1              <- notSeq
+    (Keyword ";" _) <- getC
+    s2              <- tokStatementP
     return $ Sequence s1 s2
   notSeq = isAss <|> isIf <|> isWhi <|> isSkp <|> isPrint where
     isAss = do
-      (TokVar v)     <- getC
-      (Keyword ":=") <- getC
-      e              <- tokExprP
-      return $ Assign v e
+      (TokVar v _)     <- getC
+      (Keyword ":=" ln) <- getC
+      e                <- tokExprP
+      return $ Assign v e ln
     isIf = do
-      (Keyword "if")    <- getC
-      e                 <- tokExprP
-      (Keyword "then")  <- getC
-      s1                <- tokStatementP
-      (Keyword "else")  <- getC
-      s2                <- tokStatementP
-      (Keyword "endif") <- getC
-      return $ If e s1 s2
+      (Keyword "if" ln)    <- getC
+      e                   <- tokExprP
+      (Keyword "then" _)  <- getC
+      s1                  <- tokStatementP
+      (Keyword "else" _)  <- getC
+      s2                  <- tokStatementP
+      (Keyword "endif" _) <- getC
+      return $ If e s1 s2 ln
     isWhi = do
-      (Keyword "while")    <- getC
-      e                    <- tokExprP
-      (Keyword "do")       <- getC
-      s                    <- tokStatementP
-      (Keyword "endwhile") <- getC
-      return $ While e s
+      (Keyword "while"  ln)    <- getC
+      e                      <- tokExprP
+      (Keyword "do" _)       <- getC
+      s                      <- tokStatementP
+      (Keyword "endwhile" _) <- getC
+      return $ While e s ln
     isSkp = do
-      (Keyword "skip") <- getC
-      return Skip
+      (Keyword "skip" ln) <- getC
+      return $ Skip ln
     isPrint = do
-      (Keyword "print") <- getC
-      (Literal s)       <- getC
-      e                 <- tokExprP
-      return $ Print s e
+      (Keyword "print" ln) <- getC
+      (Literal s _)       <- getC
+      e                   <- tokExprP
+      return $ Print s e ln
 
 
 doLexer :: String -> [Token]
@@ -131,8 +143,15 @@ tokParse str = case doParse tokStatementP (doLexer str) of
     [(s,_)] -> Right s
     _       -> Left "Multiple Parses"
 
-tokParseFromFile :: String -> IO (Either ParseError Statement)
+mkMap :: String -> Map Int String
+mkMap s = m where
+  (_, _, m) = foldl split (1, [], Map.empty) s
+  split (ln, line, m) '\n' = (ln + 1, "", Map.insert ln line m)
+  split (ln, line, m) c    = (ln, line ++ [c], m)
+
+tokParseFromFile :: String -> IO (Either ParseError Statement, Map Int String)
 tokParseFromFile filename = do 
   handle <- openFile filename ReadMode 
   str <- hGetContents handle
-  return $ tokParse str
+  return (tokParse str, mkMap str)
+

@@ -25,7 +25,8 @@ type CmdLexer = GenParser Char [CmdToken]
 
 cmds :: [ GenParser Char CmdToken ]
 cmds = map (\x -> constP x (Command x)) 
-          [ "load", "step", "back", "run", "mkbreak", "rmbreak", "lsbreak", "vars" ]
+          [ "load", "step", "back", "run", "mkbreak", "rmbreak", "lsbreak", 
+            "vars" ]
 
 cmdLexer :: CmdLexer
 cmdLexer = sepBy1

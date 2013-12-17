@@ -37,16 +37,17 @@ data Bop =
   deriving (Show, Eq)
 
 -- Programs in the language are simply values of the type
+type Line = Int
 
 data Statement =
-    Assign Variable Expression          
-  | If Expression Statement Statement
-  | While Expression Statement       
+    Assign Variable Expression Line         
+  | If Expression Statement Statement Line
+  | While Expression Statement Line      
   | Sequence Statement Statement        
-  | Skip
-  | Print String Expression
-  | Throw Expression
-  | Try Statement Variable Statement
+  | Skip Line
+  | Print String Expression Line
+  | Throw Expression Line
+  | Try Statement Variable Statement Line
   deriving (Show, Eq)
 
 
@@ -92,24 +93,24 @@ level _      = 8
 
 
 instance PP Statement where
-  pp (Assign x e) = PP.text x <+> PP.text ":=" <+> pp e
-  pp (If e s1 s2) = 
+  pp (Assign x e _) = PP.text x <+> PP.text ":=" <+> pp e
+  pp (If e s1 s2 _) = 
     PP.vcat [PP.text "if" <+> pp e <+> PP.text "then",
          PP.nest 2 (pp s1), 
          PP.text "else",
          PP.nest 2 (pp s2),
          PP.text "endif"]
-  pp (While e s)  = 
+  pp (While e s _)  = 
      PP.vcat [PP.text "while" <+> pp e <+> PP.text "do",
               PP.nest 2 (pp s),
               PP.text "endwhile"]            
   pp (Sequence s1@(Sequence _ _) s2) = 
        PP.parens (pp s1) <> PP.semi $$ pp s2     
   pp (Sequence s1 s2) = pp s1 <> PP.semi $$ pp s2
-  pp Skip = PP.text "skip"
-  pp (Print s e) = PP.text "print" <+> PP.doubleQuotes (PP.text s) <+> pp e
-  pp (Throw e) = PP.text "throw" <+> pp e 
-  pp (Try s1 v s2) = PP.vcat [ PP.text "try", 
+  pp (Skip _) = PP.text "skip"
+  pp (Print s e _) = PP.text "print" <+> PP.doubleQuotes (PP.text s) <+> pp e
+  pp (Throw e _) = PP.text "throw" <+> pp e 
+  pp (Try s1 v s2 _) = PP.vcat [ PP.text "try", 
                                PP.nest 2 (pp s1), 
                                PP.text "catch" <+> PP.text v <+> PP.text "with",
                                PP.nest 2 (pp s2),
