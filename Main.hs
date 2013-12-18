@@ -5,6 +5,7 @@ FlexibleInstances #-}
 module Main where
 
 import Data.IORef
+import System.Exit
 import System.IO
 
 import Data.List
@@ -145,7 +146,7 @@ execCmd env LsBreak = do
   bps <- readIORef (getBps env)
   putStrLn $ if null bps then "No Breakpoints" else "Breakpoints: " ++ show bps
 execCmd _   (Error str) = putStrLn str
-execCmd env (Man mCmd)  = do
+execCmd _ (Man mCmd)  = do
   let
     printCmd        = putStrLn . formatList
     justCmd cmd     = filter (\(cmd',_,_) -> isInfixOf cmd cmd')
@@ -155,7 +156,7 @@ execCmd env (Man mCmd)  = do
   case mCmd of
     Nothing  -> printCmd cmdstrs
     Just cmd -> printCmd $ justCmd cmd cmdstrs where 
---execCmd env _ = undefined
+execCmd _ Exit = exitSuccess
 
 parseLine :: Environment -> String -> IO ()
 parseLine env line = case cmdParse line of

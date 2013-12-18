@@ -16,6 +16,7 @@ data Cmd =
   | MkBreak Int
   | RmBreak Int
   | LsBreak
+  | Exit
   | Error String
   deriving (Show, Eq)
 
@@ -38,7 +39,8 @@ cmdstrs = [ ("load",    "load filename",   "Loads a while program with the path 
             ("lsbreak", "lsbreak      ",   "Lists all the current breakpoints"),
             ("vars",    "vars         ",   "Prints the values of the variables currently assigned"),
             ("print",   "print /linenum/", "Prints the loaded program, or line number *linenum* of the loaded program"),
-            ("help",    "help /command/",  "Prints the details of all commands, or the details of *command*") ]
+            ("help",    "help /command/",  "Prints the details of all commands, or the details of *command*"),
+            ("exit",    "exit          ",  "Exits the debugger") ]
 
 cmds :: [ GenParser Char CmdToken ]
 cmds = map (\x -> constP x (Command x)) (map (\(n,_,_) -> n) cmdstrs)
@@ -80,6 +82,7 @@ cmdP = help <|> load <|> intArg <|> noArg where
       Command "lsbreak" -> LsBreak
       Command "print"   -> PrintLn Nothing
       Command "help"    -> Man Nothing
+      Command "exit"    -> Exit
       _ -> Error errMessage
   errMessage = "Not a Command"
 
