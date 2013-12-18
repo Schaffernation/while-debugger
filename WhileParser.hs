@@ -101,19 +101,6 @@ opLevel l = do
     TokBop bop _ -> if level bop == l then (return $ Op bop) else fail ""
     _ -> fail ""
 
-  --op <|> valVar <|> tokParenP tokExprP where
-  --op = do
-  --  e1           <- tokParenP tokExprP <|> valVar
-  --  (TokBop b ln) <- getC
-  --  e2           <- tokExprP <|> tokParenP tokExprP
-  --  return $ Op b e1 e2
-  --valVar = do
-  --      v <- getC
-  --      case v of
-  --        TokVal v' _ -> return $ Val v'
-  --        TokVar v' _ -> return $ Var v'
-  --        _           -> fail "not val or var"
-
 
 tokStatementP :: GenParser Token Statement
 tokStatementP = isSeq <|> notSeq where

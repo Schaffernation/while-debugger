@@ -61,6 +61,14 @@ instance Eq Statement where
   Sequence s1 s2 == Sequence s1' s2' = (s1, s2) == (s1', s2')
   _            == _               = False
 
+rb :: Statement -> Statement
+rb (Sequence (Sequence s1 s2) s3) = rb $ Sequence (rb s1) $ Sequence (rb s2) (rb s3)
+rb (Sequence s1 s2) = Sequence (rb s1) (rb s2)
+rb (If e s1 s2 n)   = If e (rb s1) (rb s2) n
+rb (While e s n)    = While e (rb s) n
+rb s                = s
+
+
 
 ----------------------------
 
@@ -117,7 +125,7 @@ instance PP Statement where
               PP.nest 2 (pp s),
               PP.text "endwhile"]            
   pp (Sequence s1@(Sequence _ _) s2) = 
-       PP.parens (pp s1) <> PP.semi $$ pp s2     
+       pp s1 <> PP.semi $$ pp s2     
   pp (Sequence s1 s2) = pp s1 <> PP.semi $$ pp s2
   pp (Skip _) = PP.text "skip"
   pp (Print s e _) = PP.text "print" <+> PP.doubleQuotes (PP.text s) <+> pp e
