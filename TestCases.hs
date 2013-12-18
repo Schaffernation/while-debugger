@@ -1,5 +1,7 @@
 import Control.Monad
 import Test.QuickCheck
+import Test.HUnit hiding (State)
+
 
 import WhileParser
 import WhilePP
@@ -51,3 +53,43 @@ prop_RT :: Statement -> Bool
 prop_RT s = case tokParse (display s) of
   Left _   -> False
   Right s' -> s == s'
+
+
+----------------------------
+
+breakpointTest :: Test
+breakpointTest =
+  let (_, _, _, next) = run [2] emptyStore (Sequence (Skip 1) (Skip 2)) in
+  next ~?= Just (Skip 2)
+
+runTest :: Test
+runTest =
+  let (_, _, _, next) = run [] emptyStore (Sequence (Skip 1) (Skip 2)) in
+  next ~?= Nothing
+
+stepTest :: Test
+stepTest =
+  let (_, _, _, next) = step emptyStore (Sequence (Skip 1) (Skip 2)) in
+  next ~?= Just (Skip 2)
+
+ifStepTest :: Test
+ifStepTest =
+  let (_, _, _, next) = step emptyStore (If (Val $ BoolVal True) (Skip 2) (Skip 3) 1) in
+  next ~?= Just (Skip 2)
+
+ifStepTest2 :: Test
+ifStepTest2 =
+  let (_, _, _, next) = step emptyStore (If (Val $ BoolVal False) (Skip 2) (Skip 3) 1) in
+  next ~?= Just (Skip 3)
+
+errorTest :: Test
+errorTest = let (_, err, _, _) = run [] emptyStore (Assign "X" (Op Plus (Val $ IntVal 1) (Val $ BoolVal True)) 1) in
+  err ~?= Just "Binary Operation expected integers at line 1"
+
+errorTest2 :: Test
+errorTest2 = let (_, err, _, _) = run [] emptyStore (Assign "X" (Var "Y") 1) in
+  err ~?= Just "Variable not in scope at line 1"
+
+tests :: Test
+tests = TestList [breakpointTest, runTest, stepTest, ifStepTest, ifStepTest2,
+  errorTest, errorTest2]
