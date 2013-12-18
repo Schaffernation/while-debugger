@@ -12,7 +12,6 @@ module ParserTrans (GenParser, Parser,
                    ) where
 
 
-import Control.Monad.List
 import Control.Monad.State
 
 type GenParser e a = StateT ([e], Int) [] a
@@ -43,7 +42,7 @@ getC = do
 
 getLn :: GenParser e Int
 getLn = do
-  (input, ln) <- get
+  (_, ln) <- get
   return ln
 
 incrLn :: GenParser e ()

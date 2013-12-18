@@ -1,0 +1,13 @@
+X := 90;
+A := 0;
+B := 0;
+if X < 0 then
+  print "But that's imaginary!! " X
+else
+  while B < X do
+    A := A + 1;
+    B := A * A
+  endwhile;
+  A := A - 1;
+  print "Ans: " A
+endif
